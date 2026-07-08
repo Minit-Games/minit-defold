@@ -1,0 +1,10 @@
+# Defold build system
+/build/
+/.internal/
+/.editor_settings
+
+# Minit HTML5 bundle output (see README for the bob bundle command)
+/dist-web/
+/dist/
+# Defold editor's default Project → Bundle output dir
+/bundle/
