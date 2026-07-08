@@ -37,7 +37,7 @@ own `game.project`, then runs **Project → Fetch Libraries**:
 https://github.com/Minit-Games/minit-defold/archive/refs/tags/v<x.y.z>.zip
 ```
 
-Pointing at a **tag** pins the version; `.../archive/main.zip` tracks latest.
+Pointing at a **tag** pins the version; `.../archive/refs/heads/master.zip` tracks the latest released commit on `master`.
 After fetch, `minit/` appears read-only in their project and
 `require("minit.minit")` works.
 
