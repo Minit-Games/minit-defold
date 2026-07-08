@@ -1,4 +1,4 @@
-# Minit Games Defold SDK + sample (prototype)
+# Minit Games Defold SDK + sample
 
 Lets [Defold](https://defold.com/) creators publish a game to the Minit
 platform. A Defold game exported to **HTML5** runs as a normal web page inside
@@ -9,11 +9,32 @@ design decision the [Unity SDK](../minit-unity/) and
 [PlayCanvas SDK](../minit-playcanvas/) made: the Lua API surface maps 1:1 to the
 `window.minit` contract, so host behaviour is identical across engines.
 
-> **Prototype status.** This is a scaffold for review — a facade module plus a
-> tiny playable sample game. It is not yet published, not yet a git repo, and
-> lives under the gitignored `external/` directory. It was built and bundled
-> end-to-end with Defold 1.13.0's headless builder (`bob`); the `window.minit`
-> bridge snippets were validated against a mock host.
+> **Status.** Published as the public repo
+> [`Minit-Games/minit-defold`](https://github.com/Minit-Games/minit-defold)
+> (latest release `v0.1.0`) — a facade module plus a tiny playable sample game.
+> Built and bundled end-to-end with Defold 1.13.0's headless builder (`bob`); the
+> `window.minit` bridge snippets were validated against a mock host.
+
+## Install
+
+Add the SDK to your own Defold game as a **library dependency** — the idiomatic
+Defold path, no file copying. In your `game.project`, under `[project]
+dependencies`, add the tag-pinned archive URL, then run **Project → Fetch
+Libraries** in the editor:
+
+```
+[project]
+dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.1.0.zip
+```
+
+A tag URL pins that release; `.../archive/refs/heads/master.zip` tracks the
+latest released commit on `master` instead (it can change under you) — prefer the
+tag. After fetching, `minit/` appears as a read-only library folder and
+`require("minit.minit")` resolves.
+
+**Fallback (no editor / offline):** copy `minit/minit.lua` straight into your
+project at `minit/minit.lua` — the same file is downloadable from the
+`tool-defold` KB article in the Minit creator console.
 
 ## Layout
 
@@ -122,7 +143,7 @@ Notes:
 - **`--variant release`** strips the debug console/profiler.
 - In the GUI editor the same output comes from **Project → Bundle → HTML5**.
 
-## Open questions for the real package
+## Open questions
 
 Mirrors the same open items the PlayCanvas prototype flagged, plus Defold
 specifics surfaced while building this:
@@ -141,11 +162,10 @@ specifics surfaced while building this:
   iframe (see the build note above). Open item: whether a real game with
   non-GUI content wants `fit` (letterbox, preserves aspect) instead — a per-game
   choice, not a platform default.
-- **Distribution.** Editor creators can't `npm install`. Ship `minit/minit.lua`
-  as a copy-paste snippet in a KB article, or as a Defold
-  [library dependency](https://defold.com/manuals/libraries/) (a git URL other
-  projects add under `[project] dependencies`) — the latter is the idiomatic
-  Defold path and worth prototyping before the real repo.
+- **Distribution — resolved.** Shipped as a Defold
+  [library dependency](https://defold.com/manuals/libraries/) (the tag archive
+  URL added under `[project] dependencies` — see [Install](#install) above), with
+  the vendored `minit.lua` download as a no-editor fallback.
 - **A "Build for Minit" helper.** The Unity SDK ships an editor menu item that
   bundles + repackages in one click. Consider a `bob` wrapper script or a Defold
   [editor script](https://defold.com/manuals/editor-scripts/) that runs the
