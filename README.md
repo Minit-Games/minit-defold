@@ -84,7 +84,7 @@ call from anywhere.
 - **`get_config_value`** returns `default` when the key is absent; the reserved
   key `"userData"` always returns `default` so it never bleeds into config.
   Declare the game's config keys in your build's `meta.json` `config` array —
-  see [Declaring config values in meta.json](https://minit.studio/docs/declaring-config-values).
+  see [The meta.json file](https://minit.studio/docs/declaring-config-values).
 - **`get_user_data`** returns host-injected `window.minit.userData` when present,
   else the `?userData` URL param, else `nil`. Returns `""` (empty string,
   distinct from `nil`) if the stored value is the empty string.
