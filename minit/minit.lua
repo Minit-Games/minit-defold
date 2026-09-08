@@ -35,6 +35,8 @@ end
 --- Submit the final result. Call exactly once when the game ends.
 -- Higher score = better by default.
 -- @param score number|string
+-- @param score number|string  -- for time-based games (resultSorting fastestTime/slowestTime)
+--                              -- this is SECONDS, not ms; fractions allowed (42.5)
 -- @param options table|nil {
 --   flavor_text = string,  -- short session caption for the host result screen / feed
 --   delay       = number,  -- ms the host waits before showing the result screen
