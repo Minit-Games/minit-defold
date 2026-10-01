@@ -427,6 +427,16 @@ local function check_bundle(out, fail)
 	end
 end
 
+-- io.open can't read library files, so the SDK's notices come through the editor.
+local function notices(root)
+	local text = editor.get("/minit/NOTICES.txt", "text")
+	local own = join(root, "THIRD-PARTY-NOTICES.txt")
+	if exists(own) then
+		text = text .. "\n\n" .. read(own)
+	end
+	return text
+end
+
 -- Run ------------------------------------------------------------------------
 
 -- Returns { ok, heading, lines, text, dist }; prints the same report.
@@ -505,11 +515,17 @@ function M.run()
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
 	end
 
+	local notices_path = join(root, "build", "minit-notices.txt")
+	if not write(notices_path, notices(root)) then
+		fail("could not write " .. notices_path)
+		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
+	end
+
 	print("Minit: writing " .. zip_path)
 	zip.pack(zip_path, {
 		{ out, "." },
 		{ meta_path, "meta.json" },
-		{ join(root, "THIRD-PARTY-NOTICES.txt"), "THIRD-PARTY-NOTICES.txt" },
+		{ notices_path, "THIRD-PARTY-NOTICES.txt" },
 	})
 	editor.delete_directory("/dist/bundle")
 
