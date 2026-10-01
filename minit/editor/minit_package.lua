@@ -16,8 +16,8 @@
 --   4. zips the bundle contents + meta.json (with the game.project title
 --      added) + notices to dist/<title>.zip
 --
--- dist/ is cleared on every run and the raw bundle (dist/bundle/) is deleted
--- once zipped, so dist/ only ever holds the one ZIP to upload.
+-- Only dist/bundle/ (deleted once zipped) and dist/<title>.zip are touched;
+-- anything else in dist/ is left alone.
 --
 -- Not done here: measuring whether the game is audible (it needs a real
 -- browser).
@@ -352,11 +352,16 @@ local function check_meta(root, fail, warn)
 				or ((c.valueType == "string" or c.valueType == "color") and t ~= "string") then
 				fail(("meta.json: %s default should be a %s, got %s"):format(at, c.valueType, t))
 			end
+			for _, bound in ipairs({ "min", "max" }) do
+				if c[bound] ~= nil and type(c[bound]) ~= "number" then
+					fail(("meta.json: %s %s should be a number, got %s"):format(at, bound, type(c[bound])))
+				end
+			end
 			if c.valueType == "number" and t == "number" then
-				if c.min ~= nil and c.value < c.min then
+				if type(c.min) == "number" and c.value < c.min then
 					fail(("meta.json: %s default %s is below min %s"):format(at, c.value, c.min))
 				end
-				if c.max ~= nil and c.value > c.max then
+				if type(c.max) == "number" and c.value > c.max then
 					fail(("meta.json: %s default %s is above max %s"):format(at, c.value, c.max))
 				end
 			end
@@ -380,11 +385,13 @@ local function check_meta(root, fail, warn)
 	for _, path in ipairs(game_scripts("/", {})) do
 		local source = strip_comments(editor.get(editor_string(path), "text") or "")
 		local reported = {}
-		for key in source:gmatch("get_config_value%(%s*\"([^\"]+)\"") do
-			used[key] = true
-			if not declared[key] and not reported[key] then
-				reported[key] = true
-				fail(("meta.json: %s reads config \"%s\" but meta.json does not declare it"):format(path, key))
+		for _, pattern in ipairs({ "get_config_value%(%s*\"([^\"]+)\"", "get_config_value%(%s*'([^']+)'" }) do
+			for key in source:gmatch(pattern) do
+				used[key] = true
+				if not declared[key] and not reported[key] then
+					reported[key] = true
+					fail(("meta.json: %s reads config \"%s\" but meta.json does not declare it"):format(path, key))
+				end
 			end
 		end
 	end
@@ -482,8 +489,7 @@ function M.run()
 		return result(false, "Minit: packaging FAILED - nothing was built", problems)
 	end
 
-	-- The raw bundle is deleted once zipped, so dist/ only ever holds the
-	-- upload. (bob refuses to bundle into build/.)
+	-- bob refuses to bundle into build/.
 	local dist = join(root, "dist")
 	local bundle = join(dist, "bundle")
 	local out = join(bundle, editor_string(title))
@@ -491,7 +497,8 @@ function M.run()
 	local zip_path = join(dist, zip_name)
 
 	print("Minit: bundling release HTML5 (wasm-web) - this takes a moment")
-	editor.delete_directory("/dist")
+	editor.delete_directory("/dist/bundle")
+	os.remove(zip_path)
 	local built, err = pcall(editor.bob, {
 		platform = "wasm-web",
 		architectures = "wasm-web",

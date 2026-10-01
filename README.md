@@ -174,12 +174,6 @@ Notes:
 Mirrors the same open items the PlayCanvas prototype flagged, plus Defold
 specifics surfaced while building this:
 
-- **Minit-ready ZIP contract.** Confirm the host accepts the Defold bundle shape
-  (`index.html` + `dmloader.js` + `.wasm`/`.js` + `archive/`) as-is, and whether
-  any file must be stripped/renamed. `minit.html` already removes the Defold
-  loader chrome, the "Made with Defold" link, and the running-from-file warning,
-  and fills the viewport — verify it against the host's canvas requirements
-  (compare with the Unity WebGL template).
 - **`SharedArrayBuffer` / cross-origin isolation.** Decide whether the host
   serves games with COOP/COEP headers. If yes, we can ship the faster pthread
   wasm (drop `--architectures`); if no, the single-arch build above is required.
