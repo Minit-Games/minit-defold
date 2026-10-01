@@ -11,7 +11,7 @@ design decision the [Unity SDK](../minit-unity/) and
 
 > **Status.** Published as the public repo
 > [`Minit-Games/minit-defold`](https://github.com/Minit-Games/minit-defold)
-> (latest release `v0.1.0`) — a facade module plus a tiny playable sample game.
+> (latest release `v0.2.0`) — a facade module plus a tiny playable sample game.
 > Built and bundled end-to-end with Defold 1.13.0's headless builder (`bob`); the
 > `window.minit` bridge snippets were validated against a mock host.
 
@@ -24,13 +24,25 @@ Libraries** in the editor:
 
 ```
 [project]
-dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.1.0.zip
+dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.2.0.zip
 ```
 
 A tag URL pins that release; `.../archive/refs/heads/master.zip` tracks the
 latest released commit on `master` instead (it can change under you) — prefer the
 tag. After fetching, `minit/` appears as a read-only library folder and
 `require("minit.minit")` resolves.
+
+To package your game for upload:
+
+1. In `game.project`, set `[html5] htmlfile = /minit/minit.html` (the Minit
+   host shell with the audio repair).
+2. Package with **Project → Minit: Package for Upload**. It writes
+   `dist/<title>.zip`, ready to upload at [minit.studio](https://minit.studio).
+3. Your own `THIRD-PARTY-NOTICES.txt` (project root) is optional and gets
+   appended to the Defold engine and SDK notices in the ZIP.
+
+If your project has an `editor/` folder from an earlier Minit template, delete
+it — otherwise the menu item appears twice.
 
 **Fallback (no editor / offline):** copy `minit/minit.lua` straight into your
 project at `minit/minit.lua` — the same file is downloadable from the
@@ -40,12 +52,15 @@ project at `minit/minit.lua` — the same file is downloadable from the
 
 | Path | What it is |
 |---|---|
-| `minit/minit.lua` | **The SDK facade.** The only file shared with consumers (`[library] include_dirs = minit`). |
+| `minit/minit.lua` | **The SDK facade.** Everything under `minit/` is shared with consumers (`[library] include_dirs = minit`). |
+| `minit/minit.html` | **Minit host shell** for HTML5 builds — full-viewport canvas, Defold chrome stripped, the host's audio repaired. |
+| `minit/editor/minit.editor_script` | Adds **Project → Minit: Package for Upload** to the editor. |
+| `minit/editor/minit_package.lua` | The packager behind that menu item: checks `meta.json` and the title, bundles a release HTML5 build, checks it, zips it to `dist/<title>.zip`. |
+| `minit/NOTICES.txt` | Defold engine + SDK licence notices; the packager puts them (plus the game's own `THIRD-PARTY-NOTICES.txt`, if any) in the ZIP. |
 | `example/main/main.gui_script` | Sample "tap race" game logic — uses every facade call end-to-end. |
 | `example/main/main.gui`, `example/main/main.go`, `example/main/main.collection`, `example/main/main.font` | Sample scene wiring + a large-baked font. |
 | `example/input/game.input_binding` | Maps mouse-click / touch to the `touch` action. |
-| `example/minit.html` | **Minit-ready HTML5 template** — full-viewport canvas, Defold chrome stripped. |
-| `game.project` | Project config; bootstraps `example/`, points HTML5 builds at `example/minit.html`, declares the `[library]` share. |
+| `game.project` | Project config; bootstraps `example/`, points HTML5 builds at `/minit/minit.html`, declares the `[library]` share. |
 
 ## API
 
@@ -172,7 +187,3 @@ specifics surfaced while building this:
   [library dependency](https://defold.com/manuals/libraries/) (the tag archive
   URL added under `[project] dependencies` — see [Install](#install) above), with
   the vendored `minit.lua` download as a no-editor fallback.
-- **A "Build for Minit" helper.** The Unity SDK ships an editor menu item that
-  bundles + repackages in one click. Consider a `bob` wrapper script or a Defold
-  [editor script](https://defold.com/manuals/editor-scripts/) that runs the
-  bundle command above and produces the upload-ready ZIP.
