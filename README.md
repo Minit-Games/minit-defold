@@ -39,7 +39,7 @@ To package your game for upload:
 2. Package with **Project → Minit: Package for Upload**. It writes
    `dist/<title>.zip`, ready to upload at [minit.studio](https://minit.studio).
 3. Your own `THIRD-PARTY-NOTICES.txt` (project root) is optional and gets
-   appended to the Defold engine and SDK notices in the ZIP.
+   appended to the Defold, third-party and SDK notices in the ZIP.
 
 If your project has an `editor/` folder from an earlier Minit template, delete
 it — otherwise the menu item appears twice.
@@ -56,7 +56,7 @@ project at `minit/minit.lua` — the same file is downloadable from the
 | `minit/minit.html` | **Minit host shell** for HTML5 builds — full-viewport canvas, Defold chrome stripped, the host's audio repaired. |
 | `minit/editor/minit.editor_script` | Adds **Project → Minit: Package for Upload** to the editor. |
 | `minit/editor/minit_package.lua` | The packager behind that menu item: checks `meta.json` and the title, bundles a release HTML5 build, checks it, zips it to `dist/<title>.zip`. |
-| `minit/NOTICES.txt` | Defold engine + SDK licence notices; the packager puts them (plus the game's own `THIRD-PARTY-NOTICES.txt`, if any) in the ZIP. |
+| `minit/NOTICES.txt` | Licence notices for Defold 1.13.1, the third-party components in its HTML5 release builds, and the SDK; the packager puts them (plus the game's own `THIRD-PARTY-NOTICES.txt`, if any) in the ZIP. |
 | `example/main/main.gui_script` | Sample "tap race" game logic — uses every facade call end-to-end. |
 | `example/main/main.gui`, `example/main/main.go`, `example/main/main.collection`, `example/main/main.font` | Sample scene wiring + a large-baked font. |
 | `example/input/game.input_binding` | Maps mouse-click / touch to the `touch` action. |
