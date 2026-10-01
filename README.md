@@ -12,7 +12,7 @@ design decision the [Unity SDK](../minit-unity/) and
 > **Status.** Published as the public repo
 > [`Minit-Games/minit-defold`](https://github.com/Minit-Games/minit-defold)
 > (latest release `v0.2.0`) — a facade module plus a tiny playable sample game.
-> Built and bundled end-to-end with Defold 1.13.0's headless builder (`bob`); the
+> Built and bundled end-to-end with Defold 1.13.1's headless builder (`bob`); the
 > `window.minit` bridge snippets were validated against a mock host.
 
 ## Install
@@ -43,10 +43,15 @@ To package your game for upload:
 
 If your project has an `editor/` folder from an earlier Minit template, delete
 it — otherwise the menu item appears twice.
+If your `THIRD-PARTY-NOTICES.txt` came from an earlier Minit template, remove its
+Defold and Minit SDK sections — the packager now adds them.
 
 **Fallback (no editor / offline):** copy `minit/minit.lua` straight into your
 project at `minit/minit.lua` — the same file is downloadable from the
 `tool-defold` KB article in the Minit creator console.
+Also copy [`minit/minit.html`](https://github.com/Minit-Games/minit-defold/blob/v0.2.0/minit/minit.html)
+from the release tag to `minit/minit.html` in your project for the shell.
+Without the dependency there is no menu item or packager — bundle manually.
 
 ## Layout
 
