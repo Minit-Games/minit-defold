@@ -1,6 +1,6 @@
 [project]
 title = Minit Defold Sample
-version = 0.1.0
+version = 0.2.0
 
 [library]
 include_dirs = minit
@@ -17,7 +17,7 @@ height = 1280
 high_dpi = 1
 
 [html5]
-htmlfile = /example/minit.html
+htmlfile = /minit/minit.html
 show_fullscreen_button = 0
 show_made_with_defold = 0
 scale_mode = stretch
