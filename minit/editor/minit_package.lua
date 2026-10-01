@@ -498,7 +498,10 @@ function M.run()
 
 	print("Minit: bundling release HTML5 (wasm-web) - this takes a moment")
 	editor.delete_directory("/dist/bundle")
-	os.remove(zip_path)
+	-- The editor's os.remove raises on a missing file.
+	if exists(zip_path) then
+		os.remove(zip_path)
+	end
 	local built, err = pcall(editor.bob, {
 		platform = "wasm-web",
 		architectures = "wasm-web",
