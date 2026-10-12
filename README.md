@@ -11,7 +11,7 @@ design decision the [Unity SDK](../minit-unity/) and
 
 > **Status.** Published as the public repo
 > [`Minit-Games/minit-defold`](https://github.com/Minit-Games/minit-defold)
-> (latest release `v0.2.0`) — a facade module plus a tiny playable sample game.
+> (latest release `v0.3.0`) — a facade module plus a tiny playable sample game.
 > Built and bundled end-to-end with Defold 1.13.1's headless builder (`bob`); the
 > `window.minit` bridge snippets were validated against a mock host.
 
@@ -24,7 +24,7 @@ Libraries** in the editor:
 
 ```
 [project]
-dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.2.0.zip
+dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.3.0.zip
 ```
 
 A tag URL pins that release; `.../archive/refs/heads/master.zip` tracks the
@@ -35,7 +35,8 @@ tag. After fetching, `minit/` appears as a read-only library folder and
 To package your game for upload:
 
 1. In `game.project`, set `[html5] htmlfile = /minit/minit.html` (the Minit
-   host shell with the audio repair).
+   host shell with the audio repair). Minit Studio recognises the Defold facade
+   through this shell's `generator` meta, so always use (and keep current) `minit/minit.html`.
 2. Package with **Project → Minit: Package for Upload**. It writes
    `dist/<title>.zip`, ready to upload at [minit.studio](https://minit.studio).
 3. Your own `THIRD-PARTY-NOTICES.txt` (project root) is optional and gets
@@ -49,7 +50,7 @@ Defold and Minit SDK sections — the packager now adds them.
 **Fallback (no editor / offline):** copy `minit/minit.lua` straight into your
 project at `minit/minit.lua` — the same file is downloadable from the
 `tool-defold` KB article in the Minit creator console.
-Also copy [`minit/minit.html`](https://github.com/Minit-Games/minit-defold/blob/v0.2.0/minit/minit.html)
+Also copy [`minit/minit.html`](https://github.com/Minit-Games/minit-defold/blob/v0.3.0/minit/minit.html)
 from the release tag to `minit/minit.html` in your project for the shell.
 Without the dependency there is no menu item or packager — bundle manually.
 
