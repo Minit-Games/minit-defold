@@ -8,7 +8,7 @@ Defold libraries are consumed as **source** — there is **no build/publish
 pipeline** (unlike `minit-sdk`'s npm publish). A release is just a tag + GitHub
 Release:
 
-1. From `develop`, bump `[project] version` in `game.project`, commit.
+1. From `develop`, bump `[project] version` in `game.project` to the release-train version, commit.
 2. Fast-forward `develop` → `master` (`git merge --ff-only develop`).
 3. Tag `v<x.y.z>` on `master` and push the tag; cut a GitHub Release.
 4. The tag's archive URL (`https://github.com/Minit-Games/minit-defold/archive/refs/tags/v<x.y.z>.zip`) is the creator-facing dependency URL.
