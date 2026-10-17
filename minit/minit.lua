@@ -107,4 +107,17 @@ function M.get_user_data()
     return nil
 end
 
+--- Whether to run the first-play tutorial. `?tutorial=1|true` forces it on,
+-- `?tutorial=0|false` forces it off; otherwise it shows unless the host reports
+-- `window.minit.hasPlayedGame === true`. Outside an HTML5 build it returns true.
+-- @return boolean
+function M.should_show_tutorial()
+    if not has_bridge() then return true end
+    local override = M.get_config_value("tutorial")
+    if override == "1" or override == "true" then return true end
+    if override == "0" or override == "false" then return false end
+    local raw = html5.run("JSON.stringify(!!(window.minit&&window.minit.hasPlayedGame===true))")
+    return raw ~= "true"
+end
+
 return M
