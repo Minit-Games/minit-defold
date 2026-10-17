@@ -153,9 +153,10 @@ local VIEWABLE_INSTALL_JS =
     "return JSON.stringify(w.__minitViewable);})()"
 
 -- Timers live in their creating script's timer world, so only the timer's own
--- callback cancels it; a replaced or unneeded timer stops itself on its next tick.
+-- callback cancels it. A replaced timer still polls once on its next tick before
+-- stopping, so new subscriptions never push back delivery to existing ones.
 local function poll_viewable(_, handle)
-    if handle ~= viewable_timer or next(viewable_subscriptions) == nil then
+    if next(viewable_subscriptions) == nil then
         timer.cancel(handle)
         if handle == viewable_timer then viewable_timer = nil end
         return
@@ -170,6 +171,7 @@ local function poll_viewable(_, handle)
             if not ok then print(LOG_PREFIX, "on_viewable_change subscriber error:", err) end
         end
     end
+    if handle ~= viewable_timer then timer.cancel(handle) end
 end
 
 --- Subscribe to viewability changes; `fn(viewable)` fires only when the value
