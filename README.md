@@ -84,6 +84,18 @@ local difficulty = minit.get_config_value("difficulty", "normal")
 -- Read this player's persisted userData slot (string | nil).
 local saved = minit.get_user_data()
 
+-- Run the first-play tutorial only when this returns true.
+if minit.should_show_tutorial() then start_tutorial() end
+
+-- Is the game visible to the player right now?
+local visible = minit.is_viewable()
+
+-- Get called when viewability changes (e.g. pause when scrolled away); keep the
+-- returned function and call it to unsubscribe, e.g. in final().
+local unsubscribe = minit.on_viewable_change(function(viewable)
+    paused = not viewable
+end)
+
 -- Submit the final result — call exactly once at game end. Higher score = better.
 -- Time-based games (meta.json resultSorting fastestTime/slowestTime): pass SECONDS,
 -- not ms — e.g. report_result(elapsed_seconds), fractions allowed.
@@ -97,7 +109,10 @@ Outside the Minit host — a **desktop build**, or an HTML5 build opened without
 the host injecting `window.minit` — every call degrades gracefully: writes
 become a `print`, and reads fall back to URL query params (`?difficulty=hard`,
 `?userData=5`), exactly like the Unity SDK falls back to `Debug.Log`. Safe to
-call from anywhere.
+call from anywhere, except `on_viewable_change` (see below).
+On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` and
+`on_viewable_change` never fires; an HTML5 build without the host follows
+`document.visibilityState`.
 
 ### Contract details (identical to `@minit-games/sdk`)
 
@@ -113,6 +128,26 @@ call from anywhere.
 - **`get_user_data`** returns host-injected `window.minit.userData` when present,
   else the `?userData` URL param, else `nil`. Returns `""` (empty string,
   distinct from `nil`) if the stored value is the empty string.
+- **`should_show_tutorial`** resolves in order: `?tutorial=1|true` → show,
+  `?tutorial=0|false` → hide, host `window.minit.hasPlayedGame === true` → hide,
+  else show. Off-web it returns `true`.
+- **`is_viewable`** uses the host's `window.minit.isViewable()` when present, else
+  `document.visibilityState === "visible"`; it re-reads on every call. Off-web
+  it returns `true`.
+- **`on_viewable_change`** listens to the host's `viewableChange` event when the
+  host has `isViewable`, `addEventListener` and `removeEventListener`, else to
+  `visibilitychange`. Lua polls the latest value every 0.25 s, so a change
+  arrives up to ~250 ms late. Each subscriber starts from the value at subscribe
+  time and is called only when it changes; subscribing the same function twice
+  is a no-op that returns the same unsubscribe, and unsubscribing twice is safe.
+  A subscriber error is logged and doesn't stop the others.
+- **`on_viewable_change`** must be called from a script (`.script` /
+  `.gui_script`) callback: the poll runs on a Defold
+  [`timer`](https://defold.com/ref/timer/), which belongs to the script that
+  subscribed most recently and dies with it. Subscribe from a script that lives
+  as long as the subscription, and unsubscribe in its `final()`. If that script
+  is deleted first, polling stops until the next `on_viewable_change` call. The
+  timer stops itself within one poll after the last unsubscribe.
 
 ## The sample game
 
