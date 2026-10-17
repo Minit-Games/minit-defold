@@ -120,4 +120,77 @@ function M.should_show_tutorial()
     return raw ~= "true"
 end
 
+--- Whether the game is currently visible to the player: the host's
+-- `window.minit.isViewable()` when present, else `document.visibilityState`.
+-- Re-read on every call. Outside an HTML5 build it returns true.
+-- @return boolean
+function M.is_viewable()
+    if not has_bridge() then return true end
+    local raw = html5.run(
+        "JSON.stringify(window.minit&&typeof window.minit.isViewable==='function'" ..
+        "?!!window.minit.isViewable():document.visibilityState==='visible')")
+    return raw == "true"
+end
+
+local VIEWABLE_POLL_SECONDS = 0.25
+local viewable_subscriptions = {}
+local viewable_timer = nil
+
+-- Installs the page-lifetime JS listener on first call, refreshes the stored
+-- value from the same source, and returns that fresh value.
+local VIEWABLE_INSTALL_JS =
+    "(function(){var w=window,h=w.minit,d=document;" ..
+    "if(!w.__minitViewRead){" ..
+    "if(h&&typeof h.isViewable==='function'&&typeof h.addEventListener==='function'" ..
+    "&&typeof h.removeEventListener==='function'){" ..
+    "w.__minitViewRead=function(){return !!h.isViewable();};" ..
+    "h.addEventListener('viewableChange',function(v){w.__minitViewable=!!v;});" ..
+    "}else{" ..
+    "w.__minitViewRead=function(){return d.visibilityState==='visible';};" ..
+    "d.addEventListener('visibilitychange',function(){w.__minitViewable=w.__minitViewRead();});" ..
+    "}}" ..
+    "w.__minitViewable=w.__minitViewRead();" ..
+    "return JSON.stringify(w.__minitViewable);})()"
+
+-- Timers live in their creating script's timer world, so only the timer's own
+-- callback cancels it; a replaced or unneeded timer stops itself on its next tick.
+local function poll_viewable(_, handle)
+    if handle ~= viewable_timer or next(viewable_subscriptions) == nil then
+        timer.cancel(handle)
+        if handle == viewable_timer then viewable_timer = nil end
+        return
+    end
+    local value = html5.run("JSON.stringify(window.__minitViewable===true)") == "true"
+    local snapshot = {}
+    for _, sub in pairs(viewable_subscriptions) do snapshot[#snapshot + 1] = sub end
+    for _, sub in ipairs(snapshot) do
+        if viewable_subscriptions[sub.fn] == sub and sub.last ~= value then
+            sub.last = value
+            local ok, err = pcall(sub.fn, value)
+            if not ok then print(LOG_PREFIX, "on_viewable_change subscriber error:", err) end
+        end
+    end
+end
+
+--- Subscribe to viewability changes; `fn(viewable)` fires only when the value
+-- changes. Polled every 0.25 s, so a change arrives up to ~250 ms late.
+-- Subscribing the same `fn` again returns its existing unsubscribe.
+-- Call from a script instance that outlives the subscription: the poll timer
+-- belongs to the script that subscribed most recently.
+-- @param fn function(viewable: boolean)
+-- @return function unsubscribe (idempotent)
+function M.on_viewable_change(fn)
+    if not has_bridge() then return function() end end
+    local existing = viewable_subscriptions[fn]
+    if existing then return existing.unsubscribe end
+
+    local sub = { fn = fn, last = html5.run(VIEWABLE_INSTALL_JS) == "true" }
+    sub.unsubscribe = function()
+        if viewable_subscriptions[fn] == sub then viewable_subscriptions[fn] = nil end
+    end
+    viewable_subscriptions[fn] = sub
+    viewable_timer = timer.delay(VIEWABLE_POLL_SECONDS, true, poll_viewable)
+    return sub.unsubscribe
+end
+
 return M
