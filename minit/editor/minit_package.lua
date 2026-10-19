@@ -425,6 +425,26 @@ local function check_meta(root, fail, warn)
 	return text
 end
 
+-- Proves presence only, not that report_result runs exactly once.
+local function check_sdk_calls(fail, warn)
+	local calls = {}
+	for _, path in ipairs(game_scripts("/", {})) do
+		local source = strip_comments(editor.get(editor_string(path), "text") or "")
+		for _, name in ipairs({ "report_result", "loading_done" }) do
+			if source:find(name .. "%s*%(") then
+				calls[name] = true
+			end
+		end
+	end
+	if not calls.report_result then
+		fail("no script calls minit.report_result; every game must report a result. "
+			.. "https://minit.studio/docs/reporting-results?sdk=defold")
+	end
+	if not calls.loading_done then
+		warn("no script calls minit.loading_done; call it at the end of init, once the game is ready to play")
+	end
+end
+
 -- Bundle ---------------------------------------------------------------------
 
 -- bob's texture compression follows only the project's own texture profile;
@@ -539,10 +559,11 @@ function M.run()
 		return { ok = ok, heading = heading, lines = lines, text = text, dist = dist }
 	end
 
-	print("Minit: checking meta.json and the title")
+	print("Minit: checking meta.json, the title and the scripts")
 	local meta_text = check_meta(root, fail, warn)
 	local title = project_title(root)
 	check_title(title, fail)
+	check_sdk_calls(fail, warn)
 	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - nothing was built", problems)
 	end
