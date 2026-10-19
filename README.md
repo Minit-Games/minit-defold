@@ -1,19 +1,18 @@
-# Minit Games Defold SDK + sample
+# Minit Games Defold SDK
 
 Lets [Defold](https://defold.com/) creators publish a game to the Minit
 platform. A Defold game exported to **HTML5** runs as a normal web page inside
 the Minit host, so it talks to the host-injected `window.minit` runtime
 **directly** — via Defold's built-in [`html5.run`](https://defold.com/ref/stable/html5/)
-Lua→JS bridge. No bundler, no npm dependency, no CDN fetch. This is the same
-design decision the [Unity SDK](../minit-unity/) and
-[PlayCanvas SDK](../minit-playcanvas/) made: the Lua API surface maps 1:1 to the
+Lua→JS bridge. No bundler, no npm dependency, no CDN fetch. The Unity and
+PlayCanvas SDKs work the same way: the Lua API surface maps 1:1 to the
 `window.minit` contract, so host behaviour is identical across engines.
 
-> **Status.** Published as the public repo
-> [`Minit-Games/minit-defold`](https://github.com/Minit-Games/minit-defold)
-> (latest release `v0.3.0`) — a facade module plus a tiny playable sample game.
-> Built and bundled end-to-end with Defold 1.13.1's headless builder (`bob`); the
-> `window.minit` bridge snippets were validated against a mock host.
+- Starting a new game: begin from the starter template
+  [`Minit-Games/minit-template-defold`](https://github.com/Minit-Games/minit-template-defold),
+  which already lists this SDK as a dependency.
+- A complete reference game:
+  [`Minit-Games/minit-sample-defold`](https://github.com/Minit-Games/minit-sample-defold).
 
 ## Install
 
@@ -24,7 +23,7 @@ Libraries** in the editor:
 
 ```
 [project]
-dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v0.3.0.zip
+dependencies = https://github.com/Minit-Games/minit-defold/archive/refs/tags/v1.17.0.zip
 ```
 
 A tag URL pins that release; `.../archive/refs/heads/master.zip` tracks the
@@ -50,10 +49,66 @@ Defold and Minit SDK sections — the packager now adds them.
 
 **Fallback (no editor / offline):** copy `minit/minit.lua` straight into your
 project at `minit/minit.lua` — the same file is downloadable from the
-`tool-defold` KB article in the Minit creator console.
-Also copy [`minit/minit.html`](https://github.com/Minit-Games/minit-defold/blob/v0.3.0/minit/minit.html)
+[Defold guide](https://minit.studio/docs/defold) on minit.studio.
+Also copy [`minit/minit.html`](https://github.com/Minit-Games/minit-defold/blob/v1.17.0/minit/minit.html)
 from the release tag to `minit/minit.html` in your project for the shell.
 Without the dependency there is no menu item or packager — bundle manually.
+
+## Texture compression
+
+- The SDK ships a texture profile, `minit/minit.texture_profiles`. Opt in from
+  `game.project`:
+
+  ```
+  [graphics]
+  texture_profiles = /minit/minit.texture_profiles
+  ```
+
+- Rules, first match wins:
+  - images under any `uncompressed/` folder (`/**/uncompressed/**`) stay
+    uncompressed RGBA;
+  - everything else is BasisU, preset `BASISU_HIGHEST`, no mipmaps.
+- The packager always asks for texture compression, but Defold only follows the
+  project's own profile: with `texture_profiles` unset (or set to
+  `/builtins/graphics/default.texture_profiles`) textures stay uncompressed.
+- The package result says which applied: `Textures: compressed as set in <path>.`
+  or `Textures: uncompressed (no texture profile in game.project).`
+- Opting out:
+  - whole game: leave `texture_profiles` unset;
+  - single images: put them under an `uncompressed/` folder, e.g. pixel art or
+    UI that must stay pixel-exact (BasisU is lossy).
+- To customise the rules, copy the profile into your project and point
+  `texture_profiles` at your copy.
+
+## What the packager checks
+
+**Project → Minit: Package for Upload** builds nothing while any check before
+the build fails, and writes no ZIP while any later check fails. Every failure
+and note is listed in the result dialog and the editor Console.
+
+- **Title** (Project Settings → Title): set, renamed from the template default,
+  at most 50 characters, at least one letter or digit.
+- **`meta.json`**:
+  - present, valid JSON, a top-level object;
+  - `schemaVersion` and `resultSorting` set; `resultSorting` is one of
+    `highestScore`, `lowestScore`, `fastestTime`, `slowestTime`;
+  - no `title` field — the title comes from Project Settings;
+  - no text still starting with `TODO`;
+  - `controls` + `logic` + `description` together at most 2500 characters
+    (a note when close or when any is missing);
+  - `config`: at most 25 entries, each with a unique non-reserved key, a valid
+    `valueType` and a matching default, description at most 100 characters;
+  - every config key a script reads with `get_config_value` is declared, and
+    every declared key is read.
+- **Scripts**: fails when no script calls `minit.report_result`; notes when none
+  calls `minit.loading_done`.
+- **Bundle**:
+  - the Minit shell (`minit/minit.html`) with its audio repair;
+  - no thread-support (pthread) wasm;
+  - no web storage (`localStorage` / `sessionStorage`) in `index.html`;
+  - `index.html` at most 10 MB, at most 2000 files, at most 300 MB uncompressed.
+- **ZIP**: over 50 MB fails and the ZIP is deleted; over the recommended 5 MB
+  gets a note.
 
 ## Layout
 
@@ -63,10 +118,9 @@ Without the dependency there is no menu item or packager — bundle manually.
 | `minit/minit.html` | **Minit host shell** for HTML5 builds — full-viewport canvas, Defold chrome stripped, the host's audio repaired. |
 | `minit/editor/minit.editor_script` | Adds **Project → Minit: Package for Upload** to the editor. |
 | `minit/editor/minit_package.lua` | The packager behind that menu item: checks `meta.json` and the title, bundles a release HTML5 build, checks it, zips it to `dist/<title>.zip`. |
-| `minit/NOTICES.txt` | Licence notices for Defold 1.13.1, the third-party components in its HTML5 release builds, and the SDK; the packager puts them (plus the game's own `THIRD-PARTY-NOTICES.txt`, if any) in the ZIP. |
-| `example/main/main.gui_script` | Sample "tap race" game logic — uses the config, userData, loading and result calls end-to-end. |
-| `example/main/main.gui`, `example/main/main.go`, `example/main/main.collection`, `example/main/main.font` | Sample scene wiring + a large-baked font. |
-| `example/input/game.input_binding` | Maps mouse-click / touch to the `touch` action. |
+| `minit/minit.texture_profiles` | Opt-in texture profile — see [Texture compression](#texture-compression). |
+| `minit/NOTICES.txt` | Licence notices for Defold, the third-party components in its HTML5 release builds, and the SDK; the packager puts them (plus the game's own `THIRD-PARTY-NOTICES.txt`, if any) in the ZIP. |
+| `example/` | The library's own test game; not shared with consumers and not a starting point — use the template or sample above. |
 | `game.project` | Project config; bootstraps `example/`, points HTML5 builds at `/minit/minit.html`, declares the `[library]` share. |
 
 ## API
@@ -119,9 +173,12 @@ On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` an
 
 - **`report_result`**'s `score` is seconds (fractions allowed), never milliseconds,
   when the game's `resultSorting` is `"fastestTime"` / `"slowestTime"`.
-- **`report_result`** wraps `user_data` into `{ value: "<string>" }` on the wire
-  to match `UserDataPatchSchema` in `@minit/shared/zod`. Games pass a bare
-  string; the wrapping is an SDK-internal detail.
+- **`report_result`** takes `user_data` as a bare string; how it goes on the
+  wire is an SDK-internal detail.
+- **`report_result`** warns when `flavor_text` is over 64 characters (counted
+  like a JS string, so an emoji counts 2) — the platform cuts it to 64 — and
+  when called more than once, since the host ignores repeat calls. Warnings go
+  to the browser console (`console.warn`) in HTML5 builds, else to `print`.
 - **`get_config_value`** returns `default` when the key is absent; the reserved
   key `"userData"` always returns `default` so it never bleeds into config.
   Declare the game's config keys in your build's `meta.json` `config` array —
@@ -150,76 +207,8 @@ On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` an
   is deleted first, polling stops until the next `on_viewable_change` call. The
   timer stops itself within one poll after the last unsubscribe.
 
-## The sample game
+## Building for upload
 
-A 10-second "tap race": tap/click as fast as you can, score = tap count. It
-demonstrates the full lifecycle —
-
-- `init` reads `difficulty` (config) and the previous best (userData), then calls
-  `loading_done()`.
-- `difficulty` (`easy` / `normal` / `hard`) adjusts the clock — proves config
-  reaches gameplay.
-- On time-up it calls `report_result(score, { flavor_text, user_data })`,
-  persisting the new best back into the single userData slot.
-
-## Building a Minit-ready HTML5 bundle
-
-Defold builds HTML5 headlessly with `bob` (the JAR bundled in every Defold
-install — no separate download). From this directory:
-
-```bash
-# Adjust paths to your Defold install. On this machine bob lives inside the editor JAR.
-JAR="…/Defold/packages/defold-<sha>.jar"
-JAVA="…/Defold/packages/jdk-25+36/bin/java.exe"   # or any JDK 17+
-
-"$JAVA" -cp "$JAR" com.dynamo.bob.Bob \
-  --platform wasm-web --architectures wasm-web \
-  --variant release --archive \
-  --bundle-output dist-web \
-  build bundle
-```
-
-The bundle lands in `dist-web/Minit Defold Sample/` — `index.html` (from
-`minit.html`), `dmloader.js`, the `.wasm` + its loader `.js`, and an `archive/`
-folder. **Zip the *contents* of that folder** (so `index.html` is at the ZIP
-root) and upload to the Minit creator console.
-
-Notes:
-- **`--platform wasm-web`** is the HTML5 platform in Defold 1.13 (the old
-  `js-web` asm.js target is gone).
-- **Canvas fill — `[html5] scale_mode = stretch` is required.** The Minit host
-  mounts games in a `width/height: 100%` iframe of an **arbitrary-aspect**
-  container. Defold's default `downscale_fit` pins the canvas at the design
-  resolution (720×1280) and centers it with margins on any larger surface — the
-  game looks tiny/mis-fit. `stretch` makes Defold's loader size the canvas to the
-  full iframe (`innerWidth × innerHeight`) on every resize, so it always fills.
-  Because the sample is a GUI (background node `ADJUST_MODE_STRETCH`, text nodes
-  `ADJUST_MODE_FIT` + center pivot), content stays centered and undistorted at
-  any aspect. Note `scale_mode` is a **string** enum
-  (`downscale_fit`/`fit`/`stretch`/`no_scale`) — a numeric value is silently
-  ignored and emits *no* resize logic at all.
-- **`--architectures wasm-web`** ships a *single* non-pthread wasm. Without it,
-  bob also emits a `*_pthread.wasm` that the loader prefers when
-  `SharedArrayBuffer` is available — and SAB requires the page be served with
-  cross-origin-isolation headers (`COOP: same-origin` + `COEP: require-corp`).
-  Pinning to the single arch sidesteps that host requirement. See open questions.
-- **`--variant release`** strips the debug console/profiler.
-- In the GUI editor the same output comes from **Project → Bundle → HTML5**.
-
-## Open questions
-
-Mirrors the same open items the PlayCanvas prototype flagged, plus Defold
-specifics surfaced while building this:
-
-- **`SharedArrayBuffer` / cross-origin isolation.** Decide whether the host
-  serves games with COOP/COEP headers. If yes, we can ship the faster pthread
-  wasm (drop `--architectures`); if no, the single-arch build above is required.
-- **Canvas scaling — resolved to `stretch`.** `game.project` uses
-  `[html5] scale_mode = stretch` so the canvas fills the host's arbitrary-aspect
-  iframe (see the build note above). Open item: whether a real game with
-  non-GUI content wants `fit` (letterbox, preserves aspect) instead — a per-game
-  choice, not a platform default.
-- **Distribution — resolved.** Shipped as a Defold
-  [library dependency](https://defold.com/manuals/libraries/) (the tag archive
-  URL added under `[project] dependencies` — see [Install](#install) above), with
-  the vendored `minit.lua` download as a no-editor fallback.
+Use **Project → Minit: Package for Upload** (see [Install](#install)): it makes
+the release HTML5 build, runs the [checks](#what-the-packager-checks) and writes
+`dist/<title>.zip`.

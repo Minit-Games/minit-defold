@@ -1,4 +1,4 @@
--- Minit Games Defold SDK — core facade (prototype).
+-- Minit Games Defold SDK — core facade.
 --
 -- A Defold game exported to HTML5 runs as a normal web page inside the Minit
 -- host, so it talks to the host-injected `window.minit` runtime directly via
