@@ -1,0 +1,36 @@
+path_settings {
+  path: "/**/uncompressed/**"
+  profile: "Uncompressed"
+}
+path_settings {
+  path: "**"
+  profile: "Compressed"
+}
+profiles {
+  name: "Uncompressed"
+  platforms {
+    os: OS_ID_GENERIC
+    formats {
+      format: TEXTURE_FORMAT_RGBA
+      compressor: "Uncompressed"
+      compressor_preset: "UNCOMPRESSED"
+    }
+    mipmaps: false
+    max_texture_size: 0
+    premultiply_alpha: true
+  }
+}
+profiles {
+  name: "Compressed"
+  platforms {
+    os: OS_ID_GENERIC
+    formats {
+      format: TEXTURE_FORMAT_RGBA
+      compressor: "BasisU"
+      compressor_preset: "BASISU_HIGHEST"
+    }
+    mipmaps: false
+    max_texture_size: 0
+    premultiply_alpha: true
+  }
+}

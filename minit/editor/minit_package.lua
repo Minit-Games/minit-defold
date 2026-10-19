@@ -11,7 +11,8 @@
 --
 -- Everything runs inside the editor -- nothing else to install:
 --   1. checks meta.json and the title
---   2. bundles a release HTML5 build with bob, single-threaded wasm only
+--   2. bundles a release HTML5 build with bob, single-threaded wasm only,
+--      textures compressed as the game.project texture profile sets
 --   3. checks the bundle (our shell with the audio repair, no pthread wasm)
 --   4. zips the bundle contents + meta.json (with the game.project title
 --      added) + notices to dist/<title>.zip
@@ -147,9 +148,14 @@ end
 
 -- The title ---------------------------------------------------------------------
 
-local function project_title(root)
+local function project_setting(root, key)
 	local project = read(join(root, "game.project")) or ""
-	return project:match("\n%s*title%s*=%s*([^\r\n]-)%s*[\r\n]") or project:match("^%s*title%s*=%s*([^\r\n]-)%s*[\r\n]")
+	return project:match("\n%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
+		or project:match("^%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
+end
+
+local function project_title(root)
+	return project_setting(root, "title")
 end
 
 -- The ZIP is named after the title, minus emoji and what file names can't
@@ -405,6 +411,16 @@ end
 
 -- Bundle ---------------------------------------------------------------------
 
+-- bob's texture compression follows only the project's own texture profile;
+-- the engine default leaves textures uncompressed.
+local function textures_line(root)
+	local profiles = project_setting(root, "texture_profiles")
+	if not profiles or profiles == "" or profiles == "/builtins/graphics/default.texture_profiles" then
+		return "Textures: uncompressed (no texture profile in game.project)."
+	end
+	return ("Textures: compressed as set in %s."):format(profiles)
+end
+
 local function check_bundle(out, fail)
 	local html = read(join(out, "index.html")) or ""
 	-- Defold names the engine files after the title; the page says how.
@@ -507,6 +523,7 @@ function M.run()
 		architectures = "wasm-web",
 		variant = "release",
 		archive = true,
+		texture_compression = true,
 		output = "build/minit",
 		bundle_output = bundle,
 	}, "build", "bundle")
@@ -564,6 +581,7 @@ function M.run()
 		"minit.studio uses it on the first upload only; after that, rename the game there.",
 		"",
 		"Release build, single-threaded wasm, meta.json included.",
+		textures_line(root),
 		"Upload it at https://minit.studio",
 		"",
 		"Not checked here: whether the game is audible in the app.",
