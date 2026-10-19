@@ -1,6 +1,6 @@
 # CLAUDE.md — minit-defold
 
-Minit Games SDK + sample for the Defold engine (public repo `Minit-Games/minit-defold`), letting Defold creators publish a game to the Minit platform. Full maintainer reference — the `window.minit` contract, shared engine-facade pattern, distribution/release philosophy, and per-engine gotchas — lives in the internal SDK-maintenance doc.
+Minit Games SDK + sample for the Defold engine (public repo `Minit-Games/minit-defold`), letting Defold creators publish a game to the Minit platform. Full maintainer reference — the `window.minit` contract, shared engine-facade pattern, distribution/release philosophy, and per-engine gotchas — lives in `minit-root`'s `docs/sdk-maintenance.md`.
 
 ## Release process
 

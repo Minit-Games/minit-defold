@@ -10,10 +10,11 @@
 -- The response holds the printed report, then "=> true" or "=> false".
 --
 -- Everything runs inside the editor -- nothing else to install:
---   1. checks meta.json and the title
+--   1. checks meta.json, the title and the scripts' SDK calls
 --   2. bundles a release HTML5 build with bob, single-threaded wasm only,
 --      textures compressed as the game.project texture profile sets
 --   3. checks the bundle (our shell with the audio repair, no pthread wasm)
+--      and its size and file-count limits
 --   4. zips the bundle contents + meta.json (with the game.project title
 --      added) + notices to dist/<title>.zip
 --

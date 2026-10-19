@@ -65,8 +65,9 @@ Without the dependency there is no menu item or packager — bundle manually.
   ```
 
 - Rules, first match wins:
-  - images under any `uncompressed/` folder (`/**/uncompressed/**`) stay
-    uncompressed RGBA;
+  - atlases under any `uncompressed/` folder (`/**/uncompressed/**`) stay
+    uncompressed RGBA — the rule matches the `.atlas` file's path, not the
+    paths of the images in it;
   - everything else is BasisU, preset `BASISU_HIGHEST`, no mipmaps.
 - The packager always asks for texture compression, but Defold only follows the
   project's own profile: with `texture_profiles` unset (or set to
@@ -75,8 +76,8 @@ Without the dependency there is no menu item or packager — bundle manually.
   or `Textures: uncompressed (no texture profile in game.project).`
 - Opting out:
   - whole game: leave `texture_profiles` unset;
-  - single images: put them under an `uncompressed/` folder, e.g. pixel art or
-    UI that must stay pixel-exact (BasisU is lossy).
+  - single atlases: put the `.atlas` file under an `uncompressed/` folder, e.g.
+    pixel art or UI that must stay pixel-exact (BasisU is lossy).
 - To customise the rules, copy the profile into your project and point
   `texture_profiles` at your copy.
 
@@ -92,7 +93,8 @@ and note is listed in the result dialog and the editor Console.
   - present, valid JSON, a top-level object;
   - `schemaVersion` and `resultSorting` set; `resultSorting` is one of
     `highestScore`, `lowestScore`, `fastestTime`, `slowestTime`;
-  - no `title` field — the title comes from Project Settings;
+  - a non-string `title` fails; a string `title` gets a note and is replaced
+    by the Project Settings title, which is also added when there is none;
   - no text still starting with `TODO`;
   - `controls` + `logic` + `description` together at most 2500 characters
     (a note when close or when any is missing);
