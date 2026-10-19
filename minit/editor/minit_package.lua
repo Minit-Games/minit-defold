@@ -178,7 +178,7 @@ end
 local SKIPPED_DIRS = { ["/builtins"] = true, ["/minit"] = true, ["/build"] = true, ["/dist"] = true, ["/.internal"] = true }
 
 local function is_script(path)
-	return path:find("%.script$") or path:find("%.gui_script$") or path:find("%.lua$")
+	return path:find("%.script$") or path:find("%.gui_script$") or path:find("%.render_script$") or path:find("%.lua$")
 end
 
 local function game_scripts(dir, found)
@@ -197,7 +197,7 @@ end
 -- The title ---------------------------------------------------------------------
 
 local function project_setting(root, key)
-	local project = read(join(root, "game.project")) or ""
+	local project = (read(join(root, "game.project")) or "") .. "\n"
 	return project:match("\n%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
 		or project:match("^%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
 end
