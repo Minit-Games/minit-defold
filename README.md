@@ -39,6 +39,7 @@ To package your game for upload:
    through this shell's `generator` meta, so always use (and keep current) `minit/minit.html`.
 2. Package with **Project → Minit: Package for Upload**. It writes
    `dist/<title>.zip`, ready to upload at [minit.studio](https://minit.studio).
+   It fails, writing no ZIP, when the game breaks one of the platform's upload limits.
 3. Your own `THIRD-PARTY-NOTICES.txt` (project root) is optional and gets
    appended to the Defold, third-party and SDK notices in the ZIP.
 

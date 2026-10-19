@@ -33,6 +33,16 @@ local TITLE_MAX = 50
 local DESCRIPTION_MAX = 2500
 local ZIP_MAX = 52428800
 local ZIP_RECOMMENDED = 5242880
+-- backend META_CONFIG_MAX_ENTRIES
+local CONFIG_MAX_ENTRIES = 25
+-- backend META_CONFIG_DESCRIPTION_MAX_LENGTH
+local CONFIG_DESCRIPTION_MAX = 100
+-- backend MAX_ZIP_FILE_COUNT
+local FILE_COUNT_MAX = 2000
+-- backend MAX_INDEX_HTML_BYTES
+local INDEX_HTML_MAX = 10485760
+-- backend MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES
+local UNCOMPRESSED_MAX = 314572800
 -- The titles the templates ship with: a game still called this isn't named yet.
 local TEMPLATE_TITLES = { ["My Minit"] = true, ["Defold Minit Template"] = true }
 
@@ -270,6 +280,9 @@ local function check_meta(root, fail, warn)
 		config = nil
 	end
 	config = config or {}
+	if #config > CONFIG_MAX_ENTRIES then
+		fail(("meta.json: config has %d entries, over the %d limit"):format(#config, CONFIG_MAX_ENTRIES))
+	end
 
 	for _, key in ipairs({ "schemaVersion", "resultSorting" }) do
 		if meta[key] == nil then
@@ -382,6 +395,9 @@ local function check_meta(root, fail, warn)
 			end
 			if not c.description then
 				warn("meta.json: " .. at .. " has no description; players configuring a post see nothing")
+			elseif type(c.description) == "string" and js_length(c.description) > CONFIG_DESCRIPTION_MAX then
+				fail(("meta.json: %s description is %d chars, over the %d limit; minit.studio would drop it")
+					:format(at, js_length(c.description), CONFIG_DESCRIPTION_MAX))
 			end
 		end
 	end
@@ -447,6 +463,42 @@ local function check_bundle(out, fail)
 	end
 	if html:find("localStorage", 1, true) or html:find("sessionStorage", 1, true) then
 		fail("bundle: index.html touches web storage, which the platform forbids")
+	end
+	return exe
+end
+
+-- The editor can't list a directory, so the ZIP's files come from the fixed
+-- bundle layout plus the archive's own piece list.
+local function check_limits(out, exe, extras, fail)
+	local html_bytes = size(join(out, "index.html"))
+	if html_bytes > INDEX_HTML_MAX then
+		fail(("bundle: index.html is %s, over the 10 MB limit"):format(megabytes(html_bytes, 1)))
+	end
+	local listing = join(out, "archive", "archive_files.json")
+	local ok, archive = pcall(json.decode, read(listing) or "")
+	if not ok or type(archive) ~= "table" or type(archive.content) ~= "table" then
+		fail("bundle: could not read archive/archive_files.json")
+		return
+	end
+	local files = { join(out, "index.html"), join(out, "dmloader.js"), join(out, exe .. ".wasm"),
+		join(out, exe .. "_wasm.js"), listing }
+	for _, entry in ipairs(archive.content) do
+		for _, piece in ipairs(entry.pieces or {}) do
+			files[#files + 1] = join(out, "archive", piece.name)
+		end
+	end
+	for _, path in ipairs(extras) do
+		files[#files + 1] = path
+	end
+	if #files > FILE_COUNT_MAX then
+		fail(("the ZIP would hold %d files, over the %d limit"):format(#files, FILE_COUNT_MAX))
+	end
+	local total = 0
+	for _, path in ipairs(files) do
+		total = total + size(path)
+	end
+	if total > UNCOMPRESSED_MAX then
+		fail(("the ZIP contents are %s uncompressed, over the 300 MB limit"):format(megabytes(total, 1)))
 	end
 end
 
@@ -536,7 +588,7 @@ function M.run()
 		})
 	end
 
-	check_bundle(out, fail)
+	local exe = check_bundle(out, fail)
 	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
 	end
@@ -559,6 +611,11 @@ function M.run()
 	local notices_path = join(root, "build", "minit-notices.txt")
 	if not write(notices_path, notices_text) then
 		fail("could not write " .. notices_path)
+		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
+	end
+
+	check_limits(out, exe, { meta_path, notices_path }, fail)
+	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
 	end
 
