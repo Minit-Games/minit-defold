@@ -540,6 +540,11 @@ function M.run()
 	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
 	end
+	-- bob copies the project's .gitattributes into the bundle root.
+	local stray = join(out, ".gitattributes")
+	if exists(stray) then
+		os.remove(stray)
+	end
 
 	local meta_path = join(root, "build", "minit-upload-meta.json")
 	if not write(meta_path, upload_meta) then
