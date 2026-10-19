@@ -131,10 +131,47 @@ local function editor_string(s)
 end
 M.editor_string = editor_string
 
--- A commented-out example must not count as reading a config key.
-local function strip_comments(source)
-	source = source:gsub("%-%-%[(=*)%[.-%]%1%]", "")
-	return (source:gsub("%-%-[^\n]*", ""))
+-- A commented-out example must not count as reading a config key, and a "--" inside a
+-- string must not swallow the code after it, so strings are skipped while scanning.
+local function strip_comments(source, drop_strings)
+	local out, i, n = {}, 1, #source
+	while i <= n do
+		local level = source:match("^%[(=*)%[", i)
+		local quote = source:sub(i, i)
+		if source:sub(i, i + 1) == "--" then
+			local comment_level = source:match("^%-%-%[(=*)%[", i)
+			if comment_level then
+				i = (select(2, source:find("]" .. comment_level .. "]", i + 4, true)) or n) + 1
+			else
+				i = source:find("\n", i, true) or n + 1
+			end
+			out[#out + 1] = " "
+		elseif level or quote == "\"" or quote == "'" then
+			local close
+			if level then
+				close = select(2, source:find("]" .. level .. "]", i + 2, true)) or n
+			else
+				close = i + 1
+				while close <= n do
+					local c = source:sub(close, close)
+					if c == "\\" then
+						close = close + 2
+					elseif c == quote or c == "\n" then
+						break
+					else
+						close = close + 1
+					end
+				end
+			end
+			out[#out + 1] = drop_strings and " " or source:sub(i, close)
+			i = close + 1
+		else
+			local next_special = source:find("[%-%[\"']", i + 1) or n + 1
+			out[#out + 1] = source:sub(i, next_special - 1)
+			i = next_special
+		end
+	end
+	return table.concat(out)
 end
 
 -- Not the game's own code: the engine, this SDK, and build output.
@@ -426,13 +463,14 @@ local function check_meta(root, fail, warn)
 	return text
 end
 
--- Proves presence only, not that report_result runs exactly once.
+-- Proves presence only, not that report_result runs exactly once; any reference counts so an
+-- alias like `local finish = minit.report_result` is not rejected.
 local function check_sdk_calls(fail, warn)
 	local calls = {}
 	for _, path in ipairs(game_scripts("/", {})) do
-		local source = strip_comments(editor.get(editor_string(path), "text") or "")
+		local source = " " .. strip_comments(editor.get(editor_string(path), "text") or "", true) .. " "
 		for _, name in ipairs({ "report_result", "loading_done" }) do
-			if source:find(name .. "%s*%(") then
+			if source:find("[^%w_]" .. name .. "[^%w_]") then
 				calls[name] = true
 			end
 		end

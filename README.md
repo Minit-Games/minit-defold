@@ -102,8 +102,8 @@ and note is listed in the result dialog and the editor Console.
     `valueType` and a matching default, description at most 100 characters;
   - every config key a script reads with `get_config_value` is declared, and
     every declared key is read.
-- **Scripts**: fails when no script calls `minit.report_result`; notes when none
-  calls `minit.loading_done`.
+- **Scripts**: fails when no script calls or references `minit.report_result`
+  (outside comments and strings); notes when none does for `minit.loading_done`.
 - **Bundle**:
   - the Minit shell (`minit/minit.html`) with its audio repair;
   - no thread-support (pthread) wasm;
