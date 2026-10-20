@@ -10,9 +10,11 @@
 -- The response holds the printed report, then "=> true" or "=> false".
 --
 -- Everything runs inside the editor -- nothing else to install:
---   1. checks meta.json and the title
---   2. bundles a release HTML5 build with bob, single-threaded wasm only
+--   1. checks meta.json, the title and the scripts' SDK calls
+--   2. bundles a release HTML5 build with bob, single-threaded wasm only,
+--      textures compressed as the game.project texture profile sets
 --   3. checks the bundle (our shell with the audio repair, no pthread wasm)
+--      and its size and file-count limits
 --   4. zips the bundle contents + meta.json (with the game.project title
 --      added) + notices to dist/<title>.zip
 --
@@ -32,6 +34,16 @@ local TITLE_MAX = 50
 local DESCRIPTION_MAX = 2500
 local ZIP_MAX = 52428800
 local ZIP_RECOMMENDED = 5242880
+-- backend META_CONFIG_MAX_ENTRIES
+local CONFIG_MAX_ENTRIES = 25
+-- backend META_CONFIG_DESCRIPTION_MAX_LENGTH
+local CONFIG_DESCRIPTION_MAX = 100
+-- backend MAX_ZIP_FILE_COUNT
+local FILE_COUNT_MAX = 2000
+-- backend MAX_INDEX_HTML_BYTES
+local INDEX_HTML_MAX = 10485760
+-- backend MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES
+local UNCOMPRESSED_MAX = 314572800
 -- The titles the templates ship with: a game still called this isn't named yet.
 local TEMPLATE_TITLES = { ["My Minit"] = true, ["Defold Minit Template"] = true }
 
@@ -119,17 +131,55 @@ local function editor_string(s)
 end
 M.editor_string = editor_string
 
--- A commented-out example must not count as reading a config key.
-local function strip_comments(source)
-	source = source:gsub("%-%-%[(=*)%[.-%]%1%]", "")
-	return (source:gsub("%-%-[^\n]*", ""))
+-- A commented-out example must not count as reading a config key, and a "--" inside a
+-- string must not swallow the code after it, so strings are skipped while scanning.
+local function strip_comments(source, drop_strings)
+	local out, i, n = {}, 1, #source
+	while i <= n do
+		local level = source:match("^%[(=*)%[", i)
+		local quote = source:sub(i, i)
+		if source:sub(i, i + 1) == "--" then
+			local comment_level = source:match("^%-%-%[(=*)%[", i)
+			if comment_level then
+				i = (select(2, source:find("]" .. comment_level .. "]", i + 4, true)) or n) + 1
+			else
+				i = source:find("\n", i, true) or n + 1
+			end
+			out[#out + 1] = " "
+		elseif level or quote == "\"" or quote == "'" then
+			local close
+			if level then
+				close = select(2, source:find("]" .. level .. "]", i + 2, true)) or n
+			else
+				close = i + 1
+				while close <= n do
+					local c = source:sub(close, close)
+					if c == "\\" then
+						local pair = source:sub(close + 1, close + 2)
+						close = close + ((pair == "\r\n" or pair == "\n\r") and 3 or 2)
+					elseif c == quote or c == "\n" then
+						break
+					else
+						close = close + 1
+					end
+				end
+			end
+			out[#out + 1] = drop_strings and " " or source:sub(i, close)
+			i = close + 1
+		else
+			local next_special = source:find("[%-%[\"']", i + 1) or n + 1
+			out[#out + 1] = source:sub(i, next_special - 1)
+			i = next_special
+		end
+	end
+	return table.concat(out)
 end
 
 -- Not the game's own code: the engine, this SDK, and build output.
 local SKIPPED_DIRS = { ["/builtins"] = true, ["/minit"] = true, ["/build"] = true, ["/dist"] = true, ["/.internal"] = true }
 
 local function is_script(path)
-	return path:find("%.script$") or path:find("%.gui_script$") or path:find("%.lua$")
+	return path:find("%.script$") or path:find("%.gui_script$") or path:find("%.render_script$") or path:find("%.lua$")
 end
 
 local function game_scripts(dir, found)
@@ -147,9 +197,14 @@ end
 
 -- The title ---------------------------------------------------------------------
 
+local function project_setting(root, key)
+	local project = (read(join(root, "game.project")) or "") .. "\n"
+	return project:match("\n%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
+		or project:match("^%s*" .. key .. "%s*=%s*([^\r\n]-)%s*[\r\n]")
+end
+
 local function project_title(root)
-	local project = read(join(root, "game.project")) or ""
-	return project:match("\n%s*title%s*=%s*([^\r\n]-)%s*[\r\n]") or project:match("^%s*title%s*=%s*([^\r\n]-)%s*[\r\n]")
+	return project_setting(root, "title")
 end
 
 -- The ZIP is named after the title, minus emoji and what file names can't
@@ -264,6 +319,9 @@ local function check_meta(root, fail, warn)
 		config = nil
 	end
 	config = config or {}
+	if #config > CONFIG_MAX_ENTRIES then
+		fail(("meta.json: config has %d entries, over the %d limit"):format(#config, CONFIG_MAX_ENTRIES))
+	end
 
 	for _, key in ipairs({ "schemaVersion", "resultSorting" }) do
 		if meta[key] == nil then
@@ -376,6 +434,9 @@ local function check_meta(root, fail, warn)
 			end
 			if not c.description then
 				warn("meta.json: " .. at .. " has no description; players configuring a post see nothing")
+			elseif type(c.description) == "string" and js_length(c.description) > CONFIG_DESCRIPTION_MAX then
+				fail(("meta.json: %s description is %d chars, over the %d limit; minit.studio would drop it")
+					:format(at, js_length(c.description), CONFIG_DESCRIPTION_MAX))
 			end
 		end
 	end
@@ -403,7 +464,38 @@ local function check_meta(root, fail, warn)
 	return text
 end
 
+-- Proves presence only, not that report_result runs exactly once; any reference counts so an
+-- alias like `local finish = minit.report_result` is not rejected.
+local function check_sdk_calls(fail, warn)
+	local calls = {}
+	for _, path in ipairs(game_scripts("/", {})) do
+		local source = " " .. strip_comments(editor.get(editor_string(path), "text") or "", true) .. " "
+		for _, name in ipairs({ "report_result", "loading_done" }) do
+			if source:find("[^%w_]" .. name .. "[^%w_]") then
+				calls[name] = true
+			end
+		end
+	end
+	if not calls.report_result then
+		fail("no script calls minit.report_result; every game must report a result. "
+			.. "https://minit.studio/docs/reporting-results?sdk=defold")
+	end
+	if not calls.loading_done then
+		warn("no script calls minit.loading_done; call it at the end of init, once the game is ready to play")
+	end
+end
+
 -- Bundle ---------------------------------------------------------------------
+
+-- bob's texture compression follows only the project's own texture profile;
+-- the engine default leaves textures uncompressed.
+local function textures_line(root)
+	local profiles = project_setting(root, "texture_profiles")
+	if not profiles or profiles == "" or profiles == "/builtins/graphics/default.texture_profiles" then
+		return "Textures: uncompressed (no texture profile in game.project)."
+	end
+	return ("Textures: compressed as set in %s."):format(profiles)
+end
 
 local function check_bundle(out, fail)
 	local html = read(join(out, "index.html")) or ""
@@ -431,6 +523,42 @@ local function check_bundle(out, fail)
 	end
 	if html:find("localStorage", 1, true) or html:find("sessionStorage", 1, true) then
 		fail("bundle: index.html touches web storage, which the platform forbids")
+	end
+	return exe
+end
+
+-- The editor can't list a directory, so the ZIP's files come from the fixed
+-- bundle layout plus the archive's own piece list.
+local function check_limits(out, exe, extras, fail)
+	local html_bytes = size(join(out, "index.html"))
+	if html_bytes > INDEX_HTML_MAX then
+		fail(("bundle: index.html is %s, over the 10 MB limit"):format(megabytes(html_bytes, 1)))
+	end
+	local listing = join(out, "archive", "archive_files.json")
+	local ok, archive = pcall(json.decode, read(listing) or "")
+	if not ok or type(archive) ~= "table" or type(archive.content) ~= "table" then
+		fail("bundle: could not read archive/archive_files.json")
+		return
+	end
+	local files = { join(out, "index.html"), join(out, "dmloader.js"), join(out, exe .. ".wasm"),
+		join(out, exe .. "_wasm.js"), listing }
+	for _, entry in ipairs(archive.content) do
+		for _, piece in ipairs(entry.pieces or {}) do
+			files[#files + 1] = join(out, "archive", piece.name)
+		end
+	end
+	for _, path in ipairs(extras) do
+		files[#files + 1] = path
+	end
+	if #files > FILE_COUNT_MAX then
+		fail(("the ZIP would hold %d files, over the %d limit"):format(#files, FILE_COUNT_MAX))
+	end
+	local total = 0
+	for _, path in ipairs(files) do
+		total = total + size(path)
+	end
+	if total > UNCOMPRESSED_MAX then
+		fail(("the ZIP contents are %s uncompressed, over the 300 MB limit"):format(megabytes(total, 1)))
 	end
 end
 
@@ -471,10 +599,11 @@ function M.run()
 		return { ok = ok, heading = heading, lines = lines, text = text, dist = dist }
 	end
 
-	print("Minit: checking meta.json and the title")
+	print("Minit: checking meta.json, the title and the scripts")
 	local meta_text = check_meta(root, fail, warn)
 	local title = project_title(root)
 	check_title(title, fail)
+	check_sdk_calls(fail, warn)
 	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - nothing was built", problems)
 	end
@@ -507,6 +636,7 @@ function M.run()
 		architectures = "wasm-web",
 		variant = "release",
 		archive = true,
+		texture_compression = true,
 		output = "build/minit",
 		bundle_output = bundle,
 	}, "build", "bundle")
@@ -519,9 +649,14 @@ function M.run()
 		})
 	end
 
-	check_bundle(out, fail)
+	local exe = check_bundle(out, fail)
 	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
+	end
+	-- bob copies the project's .gitattributes into the bundle root.
+	local stray = join(out, ".gitattributes")
+	if exists(stray) then
+		os.remove(stray)
 	end
 
 	local meta_path = join(root, "build", "minit-upload-meta.json")
@@ -537,6 +672,11 @@ function M.run()
 	local notices_path = join(root, "build", "minit-notices.txt")
 	if not write(notices_path, notices_text) then
 		fail("could not write " .. notices_path)
+		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
+	end
+
+	check_limits(out, exe, { meta_path, notices_path }, fail)
+	if #problems > 0 then
 		return result(false, "Minit: packaging FAILED - no ZIP was written", problems)
 	end
 
@@ -564,6 +704,7 @@ function M.run()
 		"minit.studio uses it on the first upload only; after that, rename the game there.",
 		"",
 		"Release build, single-threaded wasm, meta.json included.",
+		textures_line(root),
 		"Upload it at https://minit.studio",
 		"",
 		"Not checked here: whether the game is audible in the app.",

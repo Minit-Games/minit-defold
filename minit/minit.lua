@@ -1,4 +1,4 @@
--- Minit Games Defold SDK — core facade (prototype).
+-- Minit Games Defold SDK — core facade.
 --
 -- A Defold game exported to HTML5 runs as a normal web page inside the Minit
 -- host, so it talks to the host-injected `window.minit` runtime directly via
@@ -15,11 +15,35 @@ local M = {}
 
 local RESERVED_CONFIG_KEY = "userData"
 local LOG_PREFIX = "[Minit]"
+-- backend MAX_FLAVOR_TEXT_LENGTH
+local FLAVOR_TEXT_MAX = 64
+
+local report_result_calls = 0
 
 -- The `html5` module is only present in HTML5 builds. On desktop/mobile it is
 -- nil, so this doubles as our "are we running on the web at all?" check.
 local function has_bridge()
     return html5 ~= nil
+end
+
+local function warn(message)
+    if has_bridge() then
+        html5.run("console.warn(" .. json.encode(LOG_PREFIX .. " " .. message) .. ");")
+    else
+        print(LOG_PREFIX, message)
+    end
+end
+
+-- Counts UTF-16 code units like the backend's JS string length, so an emoji counts 2.
+local function js_length(s)
+    local n = 0
+    for i = 1, #s do
+        local b = s:byte(i)
+        if b < 0x80 or b >= 0xC0 then
+            n = n + (b >= 0xF0 and 2 or 1)
+        end
+    end
+    return n
 end
 
 --- Signal the host the game is booted and ready to be revealed.
@@ -46,9 +70,18 @@ end
 function M.report_result(score, options)
     options = options or {}
 
-    -- Build the host options object, wrapping user_data into { value } to match
-    -- HostResultOptions / UserDataPatchSchema in @minit/shared/zod. Games pass a
-    -- bare string; the wrapping is a wire-format detail.
+    report_result_calls = report_result_calls + 1
+    if report_result_calls > 1 then
+        warn("report_result called again; the host ignores repeat calls")
+    end
+    if type(options.flavor_text) == "string" then
+        local length = js_length(options.flavor_text)
+        if length > FLAVOR_TEXT_MAX then
+            warn(("flavor_text is %d characters; the platform cuts it to %d"):format(length, FLAVOR_TEXT_MAX))
+        end
+    end
+
+    -- The host expects user_data wrapped as { value }; games pass a bare string.
     local host_options = {}
     if options.flavor_text ~= nil then host_options.flavorText = options.flavor_text end
     if options.delay ~= nil then host_options.delay = options.delay end
