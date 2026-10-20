@@ -155,7 +155,8 @@ local function strip_comments(source, drop_strings)
 				while close <= n do
 					local c = source:sub(close, close)
 					if c == "\\" then
-						close = close + 2
+						local pair = source:sub(close + 1, close + 2)
+						close = close + ((pair == "\r\n" or pair == "\n\r") and 3 or 2)
 					elseif c == quote or c == "\n" then
 						break
 					else
