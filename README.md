@@ -148,6 +148,10 @@ if minit.should_show_tutorial() then start_tutorial() end
 local effects = minit.get_motion_quality() == "reduced" and "simple" or "full"
 local reduce_motion = minit.prefers_reduced_motion()
 local device_tier = minit.get_device_tier()
+local effect_scale = effects == "simple" and 0.5 or 1
+if device_tier == "low" then effect_scale = effect_scale * 0.5 end
+set_effect_scale(effect_scale)
+if not reduce_motion then screen_shake(0.15) end
 
 -- Is the game visible to the player right now?
 local visible = minit.is_viewable()
