@@ -16,6 +16,7 @@ end
 
 function init(self)
     msg.post(".", "acquire_input_focus")
+    print("[Minit] motion", minit.get_motion_quality(), minit.prefers_reduced_motion(), minit.get_device_tier())
 
     -- Difficulty is a host-provided config value (URL query param on the web).
     local difficulty = minit.get_config_value("difficulty", "normal")

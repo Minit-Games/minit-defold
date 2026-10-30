@@ -144,6 +144,15 @@ local saved = minit.get_user_data()
 -- Run the first-play tutorial only when this returns true.
 if minit.should_show_tutorial() then start_tutorial() end
 
+-- Pick an effects level, with the device tier available for finer tuning.
+local effects = minit.get_motion_quality() == "reduced" and "simple" or "full"
+local reduce_motion = minit.prefers_reduced_motion()
+local device_tier = minit.get_device_tier()
+local effect_scale = effects == "simple" and 0.5 or 1
+if device_tier == "low" then effect_scale = effect_scale * 0.5 end
+set_effect_scale(effect_scale)
+if not reduce_motion then screen_shake(0.15) end
+
 -- Is the game visible to the player right now?
 local visible = minit.is_viewable()
 
@@ -168,8 +177,9 @@ become a `print`, and reads fall back to URL query params (`?difficulty=hard`,
 `?userData=5`), exactly like the Unity SDK falls back to `Debug.Log`. Safe to
 call from anywhere, except `on_viewable_change` (see below).
 On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` and
-`on_viewable_change` never fires; an HTML5 build without the host follows
-`document.visibilityState`.
+`get_motion_quality()`, `prefers_reduced_motion()` and `get_device_tier()` return
+`"full"`, `false` and `"unknown"`; `on_viewable_change` never fires. An HTML5
+build without the host follows `document.visibilityState`.
 
 ### Contract details (identical to `@minit-games/sdk`)
 
@@ -191,6 +201,18 @@ On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` an
 - **`should_show_tutorial`** resolves in order: `?tutorial=1|true` → show,
   `?tutorial=0|false` → hide, host `window.minit.hasPlayedGame === true` → hide,
   else show. Off-web it returns `true`.
+- **`get_motion_quality`** resolves in order: `?motionQuality=full|reduced`, host
+  `window.minit.motionQuality`, then `"reduced"` when reduced motion is preferred
+  and `"full"` otherwise. Off-web it returns `"full"`.
+- **`prefers_reduced_motion`** resolves in order: `?reducedMotion=1|true|0|false`,
+  boolean host `window.minit.prefersReducedMotion`, then the browser's
+  `prefers-reduced-motion` media query. Off-web it returns `false`.
+- **`get_device_tier`** resolves in order: `?deviceTier=low|medium|high|unknown`,
+  host `window.minit.deviceTier`, then `"unknown"`. Off-web it returns `"unknown"`.
+  Host-provided values are fixed per page load; there are no change events.
+  Outside the Minit app, `prefers_reduced_motion` and `get_motion_quality` reflect
+  the browser's current reduced-motion setting on each call, so read them at setup
+  and configure effects once. Test tiers in the web player or Studio preview with the URL overrides.
 - **`is_viewable`** uses the host's `window.minit.isViewable()` when present, else
   `document.visibilityState === "visible"`; it re-reads on every call. Off-web
   it returns `true`.
