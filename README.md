@@ -209,8 +209,10 @@ build without the host follows `document.visibilityState`.
   `prefers-reduced-motion` media query. Off-web it returns `false`.
 - **`get_device_tier`** resolves in order: `?deviceTier=low|medium|high|unknown`,
   host `window.minit.deviceTier`, then `"unknown"`. Off-web it returns `"unknown"`.
-  Capability values are fixed per page load; there are no change events. Test
-  tiers in the web player or Studio preview with the URL overrides.
+  Host-provided values are fixed per page load; there are no change events.
+  Outside the Minit app, `prefers_reduced_motion` and `get_motion_quality` reflect
+  the browser's current reduced-motion setting on each call, so read them at setup
+  and configure effects once. Test tiers in the web player or Studio preview with the URL overrides.
 - **`is_viewable`** uses the host's `window.minit.isViewable()` when present, else
   `document.visibilityState === "visible"`; it re-reads on every call. Off-web
   it returns `true`.
