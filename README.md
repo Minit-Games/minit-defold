@@ -153,6 +153,12 @@ if device_tier == "low" then effect_scale = effect_scale * 0.5 end
 set_effect_scale(effect_scale)
 if not reduce_motion then screen_shake(0.15) end
 
+-- Arm this before showing a "tap to enable tilt controls" prompt. The callback
+-- resolves on the player's next tap/click.
+minit.request_device_motion_permission(function(permission)
+    if permission == "granted" then enable_tilt_controls() end
+end)
+
 -- Is the game visible to the player right now?
 local visible = minit.is_viewable()
 
@@ -213,6 +219,10 @@ build without the host follows `document.visibilityState`.
   Outside the Minit app, `prefers_reduced_motion` and `get_motion_quality` reflect
   the browser's current reduced-motion setting on each call, so read them at setup
   and configure effects once. Test tiers in the web player or Studio preview with the URL overrides.
+- **`request_device_motion_permission`** resolves on the player's next tap/click
+  with `"granted"`, `"denied"` or `"unsupported"`. Call it before showing a
+  "tap to enable tilt controls" prompt. Outside HTML5 builds it immediately
+  returns `"unsupported"` through the callback.
 - **`is_viewable`** uses the host's `window.minit.isViewable()` when present, else
   `document.visibilityState === "visible"`; it re-reads on every call. Off-web
   it returns `true`.
