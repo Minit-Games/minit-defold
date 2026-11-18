@@ -181,7 +181,8 @@ Outside the Minit host — a **desktop build**, or an HTML5 build opened without
 the host injecting `window.minit` — every call degrades gracefully: writes
 become a `print`, and reads fall back to URL query params (`?difficulty=hard`,
 `?userData=5`), exactly like the Unity SDK falls back to `Debug.Log`. Safe to
-call from anywhere, except `on_viewable_change` (see below).
+call from anywhere, except `request_device_motion_permission` and
+`on_viewable_change` (see below).
 On a desktop build `should_show_tutorial()` and `is_viewable()` return `true` and
 `get_motion_quality()`, `prefers_reduced_motion()` and `get_device_tier()` return
 `"full"`, `false` and `"unknown"`; `on_viewable_change` never fires. An HTML5
@@ -223,6 +224,11 @@ build without the host follows `document.visibilityState`.
   with `"granted"`, `"denied"` or `"unsupported"`. Call it before showing a
   "tap to enable tilt controls" prompt. Outside HTML5 builds it immediately
   returns `"unsupported"` through the callback.
+- **`request_device_motion_permission`** must be called from a script
+  (`.script` / `.gui_script`) callback in HTML5 builds: the result is polled on
+  a Defold [`timer`](https://defold.com/ref/timer/) that dies with that script.
+  Call it from a script that lives until the callback fires; if that script is
+  deleted first, the callback never fires.
 - **`is_viewable`** uses the host's `window.minit.isViewable()` when present, else
   `document.visibilityState === "visible"`; it re-reads on every call. Off-web
   it returns `true`.
