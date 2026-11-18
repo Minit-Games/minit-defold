@@ -223,7 +223,11 @@ build without the host follows `document.visibilityState`.
 - **`request_device_motion_permission`** resolves on the player's next tap/click
   with `"granted"`, `"denied"` or `"unsupported"`. Call it before showing a
   "tap to enable tilt controls" prompt. Outside HTML5 builds it immediately
-  returns `"unsupported"` through the callback.
+  returns `"unsupported"` through the callback. `"granted"` only means the
+  browser allows motion access, not that readings will arrive: desktop browsers
+  grant it with no sensor behind it. Switch to tilt once real readings come in,
+  keep touch controls available for every result, and test tilt on a real
+  phone, on iOS and Android.
 - **`request_device_motion_permission`** must be called from a script
   (`.script` / `.gui_script`) callback in HTML5 builds: the result is polled on
   a Defold [`timer`](https://defold.com/ref/timer/) that dies with that script.
