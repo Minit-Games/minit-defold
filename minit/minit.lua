@@ -100,6 +100,36 @@ function M.report_result(score, options)
     end
 end
 
+-- An unsupported value becomes null so the host drops the whole event instead of a silently altered one.
+local function encode_track_value(value)
+    local kind = type(value)
+    if kind == "string" then return json.encode(value) end
+    if kind == "boolean" then return tostring(value) end
+    if kind == "number" and value == value and value ~= math.huge and value ~= -math.huge then
+        return ("%.17g"):format(value)
+    end
+    return "null"
+end
+
+--- Record a custom event. Hosts without event tracking ignore it.
+-- @param key string  1-64 chars of A-Z a-z 0-9 _ . -; the "minit." prefix is reserved
+-- @param props table|nil  up to 20 string keys mapping to a boolean, finite number or string
+function M.track(key, props)
+    local fields = {}
+    for k, v in pairs(props or {}) do
+        fields[#fields + 1] = json.encode(tostring(k)) .. ":" .. encode_track_value(v)
+    end
+    local key_json = type(key) == "string" and json.encode(key) or "null"
+    local props_json = "{" .. table.concat(fields, ",") .. "}"
+
+    if has_bridge() then
+        html5.run("(function(k,p){if(window.minit&&window.minit.track){window.minit.track(k,p);}" ..
+            "else{console.log('[Minit] track',k,p);}})(" .. key_json .. "," .. props_json .. ");")
+    else
+        print(LOG_PREFIX, "track", key, props_json)
+    end
+end
+
 --- Read a game config value from URL query parameters.
 -- Returns `default` when the key is absent or reserved. The `userData` key is
 -- reserved and always returns `default`.

@@ -175,6 +175,9 @@ minit.report_result(1234, {
     flavor_text = "Cleared the last wave with 1 HP left",
     user_data = "5",   -- optional; omit to leave the stored slot unchanged. "" is a valid write.
 })
+
+-- Record a custom event; props values are booleans, finite numbers or strings.
+minit.track("level_complete", { level = 3, perfect = true })
 ```
 
 Outside the Minit host — a **desktop build**, or an HTML5 build opened without
@@ -198,6 +201,11 @@ build without the host follows `document.visibilityState`.
   like a JS string, so an emoji counts 2) — the platform cuts it to 64 — and
   when called more than once, since the host ignores repeat calls. Warnings go
   to the browser console (`console.warn`) in HTML5 builds, else to `print`.
+- **`track`** forwards `(key, props)` to `window.minit.track`; the host validates
+  and rate-limits. Keys are 1–64 chars of `A-Z a-z 0-9 _ . -` and must not start
+  with `minit.`; up to 20 props, each a boolean, finite number or string of at
+  most 256 chars. Any other prop value is sent as `null`, so the host drops the
+  whole event. Without a host it logs and does nothing.
 - **`get_config_value`** returns `default` when the key is absent; the reserved
   key `"userData"` always returns `default` so it never bleeds into config.
   Declare the game's config keys in your build's `meta.json` `config` array —
