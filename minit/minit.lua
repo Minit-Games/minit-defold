@@ -123,8 +123,9 @@ function M.track(key, props)
     local props_json = "{" .. table.concat(fields, ",") .. "}"
 
     if has_bridge() then
-        html5.run("(function(k,p){if(window.minit&&window.minit.track){window.minit.track(k,p);}" ..
-            "else{console.log('[Minit] track',k,p);}})(" .. key_json .. "," .. props_json .. ");")
+        -- Parsed rather than embedded as a literal, which would turn a "__proto__" key into a prototype setter.
+        html5.run("(function(k,p){p=JSON.parse(p);if(window.minit&&window.minit.track){window.minit.track(k,p);}" ..
+            "else{console.log('[Minit] track',k,p);}})(" .. key_json .. "," .. json.encode(props_json) .. ");")
     else
         print(LOG_PREFIX, "track", key, props_json)
     end
