@@ -111,7 +111,7 @@ local function encode_track_value(value)
     return "null"
 end
 
---- Record a custom event. Hosts without event tracking ignore it.
+--- Record a custom event. Without `window.minit.track` it only logs.
 -- @param key string  any non-empty string; the "minit." prefix is reserved
 -- @param props table|nil  string keys mapping to a boolean, finite number or string
 function M.track(key, props)
