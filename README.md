@@ -202,10 +202,12 @@ build without the host follows `document.visibilityState`.
   when called more than once, since the host ignores repeat calls. Warnings go
   to the browser console (`console.warn`) in HTML5 builds, else to `print`.
 - **`track`** forwards `(key, props)` to `window.minit.track`; the host validates
-  and rate-limits. Keys are 1–64 chars of `A-Z a-z 0-9 _ . -` and must not start
-  with `minit.`; up to 20 props, each a boolean, finite number or string of at
-  most 256 chars. Any other prop value is sent as `null`, so the host drops the
-  whole event. Without a host it logs and does nothing.
+  the event. Keys and prop keys are any non-empty string, and keys must not start
+  with `minit.`; each prop value is a boolean, finite number or string. Any other
+  prop value is sent as `null`, so the host drops the whole event. The only limit
+  is a 4 KB budget of events per play (about 70–100 events with 1–2 props); an
+  event that doesn't fit the remaining budget is dropped. Without a host it logs
+  and does nothing.
 - **`get_config_value`** returns `default` when the key is absent; the reserved
   key `"userData"` always returns `default` so it never bleeds into config.
   Declare the game's config keys in your build's `meta.json` `config` array —

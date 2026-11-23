@@ -112,8 +112,8 @@ local function encode_track_value(value)
 end
 
 --- Record a custom event. Hosts without event tracking ignore it.
--- @param key string  1-64 chars of A-Z a-z 0-9 _ . -; the "minit." prefix is reserved
--- @param props table|nil  up to 20 string keys mapping to a boolean, finite number or string
+-- @param key string  any non-empty string; the "minit." prefix is reserved
+-- @param props table|nil  string keys mapping to a boolean, finite number or string
 function M.track(key, props)
     local fields = {}
     for k, v in pairs(props or {}) do
