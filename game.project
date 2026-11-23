@@ -1,6 +1,6 @@
 [project]
 title = Minit Defold Sample
-version = 1.19.0
+version = 1.23.0
 
 [library]
 include_dirs = minit
